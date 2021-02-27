@@ -1,0 +1,388 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "name": "Easy Text Summarization with punctuations.ipnyb",
+      "provenance": [],
+      "mount_file_id": "1qPkKNlRYEcvQfi5EP48lz6hhoTuhQWNn",
+      "authorship_tag": "ABX9TyNtmQ6kOGdL9HVQbtxVSvYD",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "accelerator": "TPU"
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/Pushkarp26/Text-Summarization-with-Punctuations/blob/main/Text%20Summarization.ipnyb\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "Btir1z-fPWUj"
+      },
+      "source": [
+        "# Installing Libraries\r\n",
+        "\r\n",
+        "!pip install pyLDAvis\r\n",
+        "# !apt-get install ocrmypdf -q\r\n",
+        "!pip install pdfplumber -q\r\n",
+        "!pip install transformers\r\n",
+        "\r\n",
+        "# Importing modules\r\n",
+        "import pdfplumber\r\n",
+        "import re\r\n",
+        "import random\r\n",
+        "import nltk\r\n",
+        "nltk.download('stopwords')\r\n",
+        "nltk.download('punkt')\r\n",
+        "from nltk.corpus import stopwords\r\n",
+        "from nltk.tokenize import word_tokenize \r\n",
+        "from nltk.stem import WordNetLemmatizer\r\n",
+        "nltk.download('wordnet') \r\n",
+        "import pandas as pd\r\n",
+        "import numpy as np\r\n",
+        "import string,pprint\r\n",
+        "import spacy\r\n",
+        "!pip install gensim==3.8.0\r\n",
+        "import gensim\r\n",
+        "from gensim import corpora\r\n",
+        "from transformers import GPT2Tokenizer, GPT2LMHeadModel\r\n",
+        "# libraries for visualization\r\n",
+        "import pyLDAvis\r\n",
+        "import pyLDAvis.gensim\r\n",
+        "import matplotlib.pyplot as plt\r\n",
+        "import seaborn as sns\r\n",
+        "%matplotlib inline"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "tOG15y_yPkxu",
+        "outputId": "ec67281c-da3f-47cc-9293-bee7fd465989"
+      },
+      "source": [
+        "## reading in the PDF file\r\n",
+        "with pdfplumber.open(r'/content/drive/MyDrive/Non Disclosure agreemnet.pdf') as pdf:\r\n",
+        "  no_of_pages = len(pdf.pages)\r\n",
+        "  print(\"The total number of pages of the document are: \"+ str(no_of_pages))\r\n",
+        " \r\n",
+        " \r\n",
+        "for i in range(no_of_pages):\r\n",
+        "  with pdfplumber.open(r'/content/drive/MyDrive/Non Disclosure agreemnet.pdf') as pdf:\r\n",
+        "    page_content = pdf.pages[i]\r\n",
+        "    globals()['page%s' %i] = page_content.extract_text()\r\n",
+        "\r\n",
+        "page0 = page0.replace(\"\\nCreate your own automated PDFs with JotForm PDF Editor\",\"\")\r\n",
+        "page1 = page1.replace(\"\\nCreate your own automated PDFs with JotForm PDF Editor\",\"\")\r\n",
+        "page2 = page2.replace(\"\\nCreate your own automated PDFs with JotForm PDF Editor\",\"\")\r\n",
+        "page3 = page3.replace(\"\\nIN WITNESS WHEREOF, the Parties have set their hands on the date specified.\\nReceiving Party Disclosing Party\\nPraesent id ABC Company\\n20 International P, Worce, Ma, 01654 291 Arbutus Drive, Miami, FL, 12345 \\nUnited States United States\\nRepresentative:  Representative: \\nMeggy Ciepluch John Smith\\nSignature:\\nSignature: \\nDate Signed: 11/11/1996 Date Signed: 11/11/1996\\nCreate your own automated PDFs with JotForm PDF Editor 4\",\"\")\r\n",
+        " \r\n",
+        "for i in range (no_of_pages):\r\n",
+        "  text = globals()['page%s' %i]\r\n",
+        "  text = text.replace('\\n',' ')\r\n",
+        "  text = re.sub(r\"(XI+V*.)*(VI*.)*(I?X.)*(II+.)*\",\"\",text)\r\n",
+        "  text = text.lower()\r\n",
+        "  text = re.sub(r\"[\\@#$%(){}/`~:<>+=-]\",\"\",text)\r\n",
+        "  text = re.sub(r\"[\\\"]\",\"\",text)\r\n",
+        "  text = re.sub(r\"\\d\",\"\",text)\r\n",
+        "  text = re.sub(r\"(XI+V*.)*(VI*.)*(I?X.)*(II+.)*\",\"\",text)\r\n",
+        "  stop_words = stopwords.words('english')\r\n",
+        "  word_tokens = word_tokenize(text)\r\n",
+        "  tokens_without_sw = [word for word in word_tokens if not word in stopwords.words()]\r\n",
+        "  filtered_text = (\" \").join(tokens_without_sw)\r\n",
+        "  lemmatizer = WordNetLemmatizer() \r\n",
+        "  word_tokens = word_tokenize(filtered_text)\r\n",
+        "  lemmatized_string = ' '.join([lemmatizer.lemmatize(words) for words in word_tokens])\r\n",
+        "  final_list = word_tokenize(lemmatized_string)\r\n",
+        "  globals()['page%s' %i] = final_list\r\n",
+        " \r\n",
+        "doc_list = [page0,page1,page2,page3]\r\n",
+        " \r\n",
+        "print(doc_list)"
+      ],
+      "execution_count": 2,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "The total number of pages of the document are: 4\n",
+            "[['disclosure', 'agreement', 'disclosure', 'confidentiality', 'agreement', 'agreement', 'entered', 'abc', 'company', ',', 'hereinafter', 'known', 'disclosing', 'party', ',', 'undersigned', 'receiving', 'party', 'receiving', 'party', ',', 'collectively', 'party', 'known', 'party', '.', 'whereas', ',', 'disclosing', 'party', 'shall', 'disclose', 'deliver', 'tangible', 'intangible', 'information', 'receiving', 'party', 'may', 'considered', 'confidential', 'proprietary', 'information', ';', 'whereas', ',', 'disclosing', 'party', 'desire', 'assured', 'proprietary', 'information', 'owned', 'shall', 'disclosed', 'third', 'party', 'without', 'consent', 'shall', 'maintained', 'protected', 'receiving', 'party', ';', ',', 'therefore', ',', 'consideration', 'mutual', 'promise', 'covenant', 'included', 'agreement', ',', 'party', 'agree', 'follows', 'i.', 'definition', '.', 'confidential', 'information', 'shall', 'refer', 'kind', 'information', 'whether', 'oral', 'written', 'made', 'provided', 'disclosing', 'party', 'receiving', 'party', 'vice', 'versa', '.', 'could', 'written', 'oral', 'communication', 'may', 'refer', 'patent', ',', 'copyright', ',', 'trademark', ',', 'trade', 'secret', '.', 'information', 'agreement', 'declared', 'constituted', 'confidential', 'disclosing', 'party', ',', 'regardless', 'whether', 'information', 'provided', 'date', 'agreement', 'shall', ',', 'limited', 'following', '.', 'marketing', 'development', 'information', 'includes', 'plan', 'disclosing', 'party', 'marketing', 'agenda', 'business', 'development', 'may', 'involve', 'costing', ',', 'policy', ',', 'quote', ',', 'forecast', ',', 'strategy', '.', '.', 'business', 'operation', 'information', 'refers', 'information', 'business', 'operation', 'party', 'disclosing', 'information', ',', 'including', 'number', 'personnel', ',', 'financial', 'activity', 'within', ',', 'information', 'vendor', ',', 'provider', ',', 'partner', 'openly', 'declared', 'party', 'public', '.', '.', 'product', 'information', 'refers', 'specification', 'product', 'produced', 'disclosing', 'party', 'well', 'product', 'resulting', 'related', 'work', 'project', 'performed', 'performed', 'disclosing', 'party', 'client', ',', 'information', 'product', 'research', 'development', ';', '.', 'manufacturing', 'production', 'process', 'includes', 'identified', 'process', 'systematic', 'creation', 'product', 'output', 'manufacturing', 'production', ',', 'limited', 'formula', ',', 'technical', 'procedure', ',', 'method', ',', 'technique', ',', 'specification', ',', 'including', 'used', 'device', 'equipment', ',', 'design', ',', 'model', ',', 'software', 'file', 'used', 'manufacturing', 'product', '.', 'may', 'likewise', 'refer', 'proprietary', 'information', ';', '.', 'service', 'information', 'refers', 'information', 'relating', 'service', 'provided', 'disclosing', 'party', 'limited', 'manpower', 'scheduling', ',', 'training', ',', 'maintenance', ';', '.', 'intellectual', 'property', 'refers', 'information', 'creation', 'mind', 'invention', ',', 'design', ',', 'symbol', ',', 'name', ',', 'image', 'created', 'commerce', ',', 'limited', 'logo', ',', 'computer', 'code', 'algorithm', 'humanreadable', 'machinereadable', 'form', ',', 'report', ',', 'technical', 'design', ',', 'database', 'structure', ',', 'chart', ',', 'document', 'design', 'specification', ',', 'including', 'music', 'may', 'subject', 'copyright', '.'], ['.', 'technology', 'refers', 'technical', 'scientific', 'information', 'material', 'produced', 'formulation', 'made', 'disclosing', 'party', 'information', 'publicly', 'used', ',', 'including', 'use', 'machine', ',', 'appliance', ',', 'component', ',', 'including', 'documented', 'scientific', 'process', '.', '.', 'accounting', 'information', 'includes', 'financial', 'report', ',', 'worksheet', ',', 'balance', 'sheet', ',', 'undisclosed', 'asset', 'liability', ',', 'inventory', ',', 'payroll', ',', 'information', 'may', 'relate', 'financial', 'activity', 'information', 'disclosed', 'disclosure', 'consented', 'disclosing', 'party', '.', 'confidential', 'information', 'may', 'likewise', 'include', 'information', 'disclosed', 'party', 'disclosing', 'party', 'protected', 'nondisclosure', 'agreement', 'accidentally', ',', 'incidentally', ',', 'acquired', 'receiving', 'party', 'whether', 'directly', 'indirectly', '.', 'obligation', '.', 'receiving', 'party', ',', 'upon', 'acquiring', 'confidential', 'information', 'shall', 'hold', 'trust', 'confidence', 'information', 'possessed', 'said', 'party', 'shall', 'disclose', 'party', 'use', 'benefit', 'without', 'consent', 'disclosing', 'party', '.', 'receiving', 'party', 'may', 'disassemble', ',', 'decompile', ',', 'reverse', 'engineer', 'product', ',', 'prototype', ',', 'source', 'code', ',', 'software', ',', 'object', 'shared', 'provided', 'disclosing', 'party', \"'s\", 'may', 'contain', 'confidential', 'information', 'provided', 'receiving', 'party', 'purpose', 'agreement', '.', 'receiving', 'party', 'shall', 'likewise', 'make', 'copy', ',', 'said', 'information', 'unless', 'consent', 'given', 'disclosing', 'party', '.', 'clause', 'shall', 'survive', 'continue', 'expiration', 'termination', 'agreement', '.', 'exclusion', 'confidential', 'information', '.', 'receiving', 'party', 'shall', 'need', 'consent', 'disclosing', 'party', 'share', ',', 'disclose', ',', 'copy', 'confidential', 'information', 'case', '.', 'confidential', 'information', ',', 'time', 'disclosure', ',', 'information', 'already', 'publicly', 'known', ';', '.', 'information', 'received', 'receiving', 'party', 'already', 'known', 'receiving', 'party', 'prior', 'disclosure', ';', '.', 'confidential', 'information', 'obtained', 'receiving', 'party', 'rightfully', 'party', 'disclosing', 'party', 'without', 'reason', 'believe', 'third', 'party', 'obligation', 'agreement', 'disclosing', 'party', ';', '.', 'confidential', 'information', 'developed', 'recipient', 'without', 'reference', 'dependence', 'disclosing', 'party', \"'s\", 'confidential', 'information', '.', 'noncompete', '.', 'effectivity', 'within', 'five', 'year', 'expiration', 'agreement', ',', 'receiving', 'party', 'understands', 'agrees', 'involved', 'directly', 'indirectly', ',', 'activity', 'competition', 'disclosing', 'party', '.'], ['return', 'confidential', 'information', '.', 'upon', 'termination', 'agreement', 'andor', 'upon', 'request', 'disclosing', 'party', ',', 'confidential', 'information', 'disclosed', 'agreement', 'shall', 'returned', 'disclosing', 'party', '.', 'physical', 'record', ',', 'hardcopy', 'material', ',', 'print', 'medium', ',', 'physical', 'material', 'containing', 'confidential', 'information', 'shall', 'delivered', 'return', 'disclosing', 'party', '.', 'digital', 'record', 'shall', 'deleted', 'copy', 'shall', 'retained', 'receiving', 'party', '.', 'case', 'impossibility', 'delivery', 'confidential', 'information', 'receiving', 'party', 'disclosing', 'party', ',', 'party', 'may', 'unanimously', 'elect', 'destruction', 'record', ',', 'document', ',', 'whether', 'physical', 'digital', 'containing', 'confidential', 'information', '.', 'case', 'destruction', 'confidential', 'information', ',', 'destruction', 'shall', 'certified', 'writing', 'disclosing', 'party', 'destruction', 'confidential', 'information', 'presence', 'duly', 'authorized', 'representative', 'disclosing', 'party', 'andor', 'recipient', '’', 'duly', 'authorized', 'officer', '.', 'ownership', '.', 'disclosure', 'agreement', 'transferable', '.', 'written', 'content', 'party', 'needed', 'order', 'transfer', 'agreement', '.', 'party', 'acknowledges', 'party', 'shall', 'maintain', 'exclusive', 'ownership', 'confidential', 'information', 'except', 'otherwise', 'falling', 'found', 'exclusion', 'confidential', 'information', 'clause', '.', 'neither', 'party', 'may', 'obtain', 'right', 'whatsoever', ',', 'license', 'otherwise', ',', 'party', \"'s\", 'confidential', 'information', 'unless', 'otherwise', 'consent', 'provided', 'party', '.', 'recommendation', 'information', 'made', 'receiving', 'party', 'disclosing', 'party', 'shall', 'incorporated', 'confidential', 'information', 'disclosing', 'party', 'shall', 'form', 'part', 'disclosing', 'party', \"'s\", 'confidential', 'information', '.', 'assignment', '.', 'neither', 'party', 'may', 'assign', 'delegate', 'right', ',', 'delegate', 'obligation', 'hereunder', ',', 'without', 'prior', 'written', 'consent', 'party', '.', 'general', '.', 'addition', 'modification', 'agreement', 'must', 'made', 'writing', 'signed', 'party', '.', 'effectivity', 'date', 'agreement', 'execution', 'date', '.', 'warranty', '.', 'disclosing', 'party', 'make', 'representation', 'warranty', 'whatsoever', 'receiving', 'party', 'accuracy', ',', 'completeness', ',', 'performance', 'confidential', 'information', '.', 'party', 'shall', 'become', 'liable', 'use', 'confidential', 'information', '.', 'injunctive', 'relief', '.', 'party', 'agree', 'event', 'breach', 'due', 'careless', 'handling', 'confidential', 'information', ',', 'aggrieved', 'party', 'shall', 'entitled', 'seek', 'injunctive', 'relief', 'protection', 'party', 'incurring', 'damage', 'may', 'result', 'irreparable', 'injury', '.'], ['counterpart', '.', 'party', 'may', 'execute', 'agreement', 'multiple', 'counterpart', ',', 'original', 'shall', 'constitute', 'instrument', '.', 'entire', 'agreement', '.', 'agreement', 'understood', 'complete', 'agreement', 'party', 'hereto', 'shall', 'supersede', 'prior', 'agreement', 'discussion', 'relating', 'subject', 'matter', 'hereof', '.', 'amendment', ',', 'modification', ',', 'alteration', 'made', 'agreement', 'shall', 'require', 'affirmation', 'party', 'agreement', 'signed', 'said', 'party', 'hereto', '.', 'separability', 'clause', '.', 'provision', 'hereto', 'held', 'invalid', 'competent', 'court', ',', 'invalidity', 'shall', 'affect', 'said', 'provision', 'remaining', 'provision', 'shall', 'continue', 'valid', 'enforceable', '.', 'governing', 'law', '.', 'agreement', 'shall', 'governed', 'construed', 'accordance', 'law', 'united', 'state', ',', 'exclusion', 'state', 'law', 'without', 'regard', 'conflict', 'law', 'provision', '.', 'dispute', 'arising', 'agreement', 'shall', 'filed', 'court', 'united', 'state', '.', 'party', 'hereby', 'consent', 'jurisdiction', 'said', 'court', 'waif', 'objection', 'may', 'time', 'jurisdiction', 'court', ',', 'laying', 'venue', 'court', 'convenience', 'forum', '.']]\n"
+          ],
+          "name": "stdout"
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "fNNNs5yPP2vf",
+        "outputId": "6cc582f1-ab09-48f7-dabc-f94c979ed159"
+      },
+      "source": [
+        "doc = [str(\" \".join(i)) for i in doc_list]\r\n",
+        "doc"
+      ],
+      "execution_count": 3,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "['disclosure agreement disclosure confidentiality agreement agreement entered abc company , hereinafter known disclosing party , undersigned receiving party receiving party , collectively party known party . whereas , disclosing party shall disclose deliver tangible intangible information receiving party may considered confidential proprietary information ; whereas , disclosing party desire assured proprietary information owned shall disclosed third party without consent shall maintained protected receiving party ; , therefore , consideration mutual promise covenant included agreement , party agree follows i. definition . confidential information shall refer kind information whether oral written made provided disclosing party receiving party vice versa . could written oral communication may refer patent , copyright , trademark , trade secret . information agreement declared constituted confidential disclosing party , regardless whether information provided date agreement shall , limited following . marketing development information includes plan disclosing party marketing agenda business development may involve costing , policy , quote , forecast , strategy . . business operation information refers information business operation party disclosing information , including number personnel , financial activity within , information vendor , provider , partner openly declared party public . . product information refers specification product produced disclosing party well product resulting related work project performed performed disclosing party client , information product research development ; . manufacturing production process includes identified process systematic creation product output manufacturing production , limited formula , technical procedure , method , technique , specification , including used device equipment , design , model , software file used manufacturing product . may likewise refer proprietary information ; . service information refers information relating service provided disclosing party limited manpower scheduling , training , maintenance ; . intellectual property refers information creation mind invention , design , symbol , name , image created commerce , limited logo , computer code algorithm humanreadable machinereadable form , report , technical design , database structure , chart , document design specification , including music may subject copyright .',\n",
+              " \". technology refers technical scientific information material produced formulation made disclosing party information publicly used , including use machine , appliance , component , including documented scientific process . . accounting information includes financial report , worksheet , balance sheet , undisclosed asset liability , inventory , payroll , information may relate financial activity information disclosed disclosure consented disclosing party . confidential information may likewise include information disclosed party disclosing party protected nondisclosure agreement accidentally , incidentally , acquired receiving party whether directly indirectly . obligation . receiving party , upon acquiring confidential information shall hold trust confidence information possessed said party shall disclose party use benefit without consent disclosing party . receiving party may disassemble , decompile , reverse engineer product , prototype , source code , software , object shared provided disclosing party 's may contain confidential information provided receiving party purpose agreement . receiving party shall likewise make copy , said information unless consent given disclosing party . clause shall survive continue expiration termination agreement . exclusion confidential information . receiving party shall need consent disclosing party share , disclose , copy confidential information case . confidential information , time disclosure , information already publicly known ; . information received receiving party already known receiving party prior disclosure ; . confidential information obtained receiving party rightfully party disclosing party without reason believe third party obligation agreement disclosing party ; . confidential information developed recipient without reference dependence disclosing party 's confidential information . noncompete . effectivity within five year expiration agreement , receiving party understands agrees involved directly indirectly , activity competition disclosing party .\",\n",
+              " \"return confidential information . upon termination agreement andor upon request disclosing party , confidential information disclosed agreement shall returned disclosing party . physical record , hardcopy material , print medium , physical material containing confidential information shall delivered return disclosing party . digital record shall deleted copy shall retained receiving party . case impossibility delivery confidential information receiving party disclosing party , party may unanimously elect destruction record , document , whether physical digital containing confidential information . case destruction confidential information , destruction shall certified writing disclosing party destruction confidential information presence duly authorized representative disclosing party andor recipient ’ duly authorized officer . ownership . disclosure agreement transferable . written content party needed order transfer agreement . party acknowledges party shall maintain exclusive ownership confidential information except otherwise falling found exclusion confidential information clause . neither party may obtain right whatsoever , license otherwise , party 's confidential information unless otherwise consent provided party . recommendation information made receiving party disclosing party shall incorporated confidential information disclosing party shall form part disclosing party 's confidential information . assignment . neither party may assign delegate right , delegate obligation hereunder , without prior written consent party . general . addition modification agreement must made writing signed party . effectivity date agreement execution date . warranty . disclosing party make representation warranty whatsoever receiving party accuracy , completeness , performance confidential information . party shall become liable use confidential information . injunctive relief . party agree event breach due careless handling confidential information , aggrieved party shall entitled seek injunctive relief protection party incurring damage may result irreparable injury .\",\n",
+              " 'counterpart . party may execute agreement multiple counterpart , original shall constitute instrument . entire agreement . agreement understood complete agreement party hereto shall supersede prior agreement discussion relating subject matter hereof . amendment , modification , alteration made agreement shall require affirmation party agreement signed said party hereto . separability clause . provision hereto held invalid competent court , invalidity shall affect said provision remaining provision shall continue valid enforceable . governing law . agreement shall governed construed accordance law united state , exclusion state law without regard conflict law provision . dispute arising agreement shall filed court united state . party hereby consent jurisdiction said court waif objection may time jurisdiction court , laying venue court convenience forum .']"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 3
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "D60f15USf-aH"
+      },
+      "source": [
+        "###BART Model"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "xXWZuzgcMKd-"
+      },
+      "source": [
+        "from transformers import pipeline"
+      ],
+      "execution_count": 4,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "z67Q6sLcZ1aq"
+      },
+      "source": [
+        "# Initialize the HuggingFace summarization pipeline\r\n",
+        "summarizer = pipeline(\"summarization\", model='facebook/bart-large-cnn', tokenizer='facebook/bart-large-cnn')\r\n",
+        "summarized = summarizer(doc,min_length = round(0.1 * len(text.split(' '))), max_length = round(0.2 * len(text.split(' '))))\r\n",
+        "\r\n",
+        "# Print summarized text\r\n",
+        "print(summarized)"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "mV5R9eg7eBm_",
+        "outputId": "604314b0-2498-4019-bcef-f60e41fd6966"
+      },
+      "source": [
+        "summarized"
+      ],
+      "execution_count": 12,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "[{'summary_text': 'Confidential information shall refer kind information whether oral written made provided disclosing party receiving party vice versa. could written oral communication may refer patent , copyright , trademark , trade secret. Information agreement declared constituted confidential disclosing party'},\n",
+              " {'summary_text': 'Technology refers technical scientific information material produced formulation made disclosing party information publicly used. Receiving party shall hold trust confidence information possessed said party shall disclose party use benefit without consent disclosing party.'},\n",
+              " {'summary_text': ' confidential information disclosed agreement shall returned to disclosing party. return confidential information. upon termination agreement andor upon request disclosing party, confidential information may be destroyed. Neither party may assign delegate right , delegate obligation hereunder'},\n",
+              " {'summary_text': ' agreement understood complete agreement party hereto shall supersede prior agreement discussion relating subject matter hereof. amendment, modification , alteration made agreement shall require affirmation party agreement signed said party here to . separability clause.'}]"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 12
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "z_hTnZxNf2UA"
+      },
+      "source": [
+        "###T5 Model\r\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "0BCMUUf8iqRk"
+      },
+      "source": [
+        "!pip install sentencepiece"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "YRvaKCXsZ1V7"
+      },
+      "source": [
+        "from transformers import T5Tokenizer, T5ForConditionalGeneration\r\n",
+        "model = T5ForConditionalGeneration.from_pretrained('t5-base')\r\n",
+        "tokenizer = T5Tokenizer.from_pretrained('t5-base')\r\n",
+        "Preprocessed_text = \"summarize: \" + str(doc)\r\n",
+        "tokens_input = tokenizer.encode(Preprocessed_text,return_tensors=\"pt\", max_length=512, truncation=True)\r\n",
+        "summary_ids = model.generate(tokens_input,\r\n",
+        "                             min_length=60,\r\n",
+        "                             max_length=180,\r\n",
+        "                             length_penalty=4.0) \r\n",
+        "summary = tokenizer.decode(summary_ids[0])"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 68
+        },
+        "id": "onm5D2iNeFSc",
+        "outputId": "cae918bb-2c25-4f7c-9f09-ddc28c04e750"
+      },
+      "source": [
+        "summary"
+      ],
+      "execution_count": 13,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "application/vnd.google.colaboratory.intrinsic+json": {
+              "type": "string"
+            },
+            "text/plain": [
+              "'<pad> disclosing party shall disclose deliver tangible intangible information. whereas, disclosing party desire assured proprietary information owned shall disclosed third party without consent shall maintained protected receiving party. whereas, disclosing party may disclose deliver tangible intangible information. whereas, disclosing party may disclose deliver tangible intangible information.</s>'"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 13
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "kDixLniXgXlO"
+      },
+      "source": [
+        "###BERT- extractive summarizer\r\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "6wXSZISDZ1RG"
+      },
+      "source": [
+        "!pip install bert-extractive-summarizer"
+      ],
+      "execution_count": 11,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "zC4zc0EaZ1O3"
+      },
+      "source": [
+        "from summarizer import TransformerSummarizer"
+      ],
+      "execution_count": 9,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 206
+        },
+        "id": "mdCgAmsgaV2N",
+        "outputId": "98d2c478-63fd-492d-8f61-24a16d55ea85"
+      },
+      "source": [
+        "GPT2_model = TransformerSummarizer(transformer_type=\"GPT2\",transformer_model_key=\"gpt2-medium\")\r\n",
+        "summerize = ''.join(GPT2_model(str(doc), min_length=100, max_length=260))\r\n",
+        "summerize"
+      ],
+      "execution_count": 10,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "Some weights of GPT2Model were not initialized from the model checkpoint at gpt2-medium and are newly initialized: ['h.0.attn.masked_bias', 'h.1.attn.masked_bias', 'h.2.attn.masked_bias', 'h.3.attn.masked_bias', 'h.4.attn.masked_bias', 'h.5.attn.masked_bias', 'h.6.attn.masked_bias', 'h.7.attn.masked_bias', 'h.8.attn.masked_bias', 'h.9.attn.masked_bias', 'h.10.attn.masked_bias', 'h.11.attn.masked_bias', 'h.12.attn.masked_bias', 'h.13.attn.masked_bias', 'h.14.attn.masked_bias', 'h.15.attn.masked_bias', 'h.16.attn.masked_bias', 'h.17.attn.masked_bias', 'h.18.attn.masked_bias', 'h.19.attn.masked_bias', 'h.20.attn.masked_bias', 'h.21.attn.masked_bias', 'h.22.attn.masked_bias', 'h.23.attn.masked_bias']\n",
+            "You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.\n"
+          ],
+          "name": "stderr"
+        },
+        {
+          "output_type": "execute_result",
+          "data": {
+            "application/vnd.google.colaboratory.intrinsic+json": {
+              "type": "string"
+            },
+            "text/plain": [
+              "\"['disclosure agreement disclosure confidentiality agreement agreement entered abc company , hereinafter known disclosing party , undersigned receiving party receiving party , collectively party known party . business operation information refers information business operation party disclosing information , including number personnel , financial activity within , information vendor , provider , partner openly declared party public . . product information refers specification product produced disclosing party well product resulting related work project performed performed disclosing party client , information product research development ; . confidential information may likewise include information disclosed party disclosing party protected nondisclosure agreement accidentally , incidentally , acquired receiving party whether directly indirectly . receiving party , upon acquiring confidential information shall hold trust confidence information possessed said party shall disclose party use benefit without consent disclosing party . receiving party shall need consent disclosing party share , disclose , copy confidential information case . amendment , modification , alteration made agreement shall require affirmation party agreement signed said party hereto .\""
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 10
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "id": "G_NTS6-0Y-jX"
+      },
+      "source": [
+        ""
+      ],
+      "execution_count": 10,
+      "outputs": []
+    }
+  ]
+}
